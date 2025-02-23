@@ -63,7 +63,7 @@ document.body.append(
         ui.text_myLast10 = e.span('Last 10 guesses: ', e.span('0 / 0'))
       ),
     ),
-    e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/TRNG-Mind-Over-Matter-Experiments/tree/main/guess'), '.')
+    e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/the-guess-experiment'), '.')
   )
 )
 
