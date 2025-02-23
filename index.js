@@ -128,7 +128,6 @@ peerRpc.on('peerSide', peerSide => {
 })
 
 peerRpc.on('sidesSelected', ({side, alternate}) => {
-
   ui.checkbox_ready.checked = false
   ui.checkbox_peerReady.checked = false
   lastSide = side
