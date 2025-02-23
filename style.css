@@ -4,6 +4,11 @@
   /* color-scheme: light; */
 }
 
+html, body {
+  overscroll-behavior-y: contain;
+  /* fixes refresh on down scroll */
+}
+
 * {
   box-sizing: border-box;
   user-select: none;
