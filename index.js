@@ -7,11 +7,11 @@ RPCBridge.debug = (...values) => {
   console.debug('RPCBridge', ...values)
 }
 
+navigator.serviceWorker.register('service-worker.js')
+
 await pageSetup({
-  title: 'Guess Experiment',
   allowDarkTheme: false, // skip the style injection for this
   stylesheets: 'style.css',
-  favicon: false // set to a blank one
 })
 
 // peerConnection.uiContainer can then adopt the stylesheets loaded
@@ -22,7 +22,7 @@ const ui = {}
 document.body.append(
   ui.mainContainer = e.div.id('mainContainer')(
     e.h1('The Guess Experiment'),
-    e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.9.'),
+    ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.9.'),
     peerConnection.uiContainer,
     ui.selectSide = e.form.id('form_selectSide').class('horizontal').hidden(true)(
       ui.sideFieldset = e.fieldset(e.legend('Select side:'),
@@ -52,7 +52,7 @@ document.body.append(
       ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
         for (const variant of ['star','box','waves','cross','circle']) {
           const card = e.div.class('card')(
-            e.img.draggable(false).src(`zener/${variant}.svg`)
+            e.img.draggable(false).src(`zener/${variant}.svg`).alt(variant)
           )
           cards.push(card)
         }
@@ -98,19 +98,17 @@ function checkReady() {
 }
 
 peerRpc.on('open', () => {
+  hide(ui.description)
   show(ui.selectSide)
   if (peerConnection.isDominant) {
     const side = ui.selectSide.elements['side'].value
     peerRpc.emit('peerSide', side)
   }
-  // score = {
-  //   me:   new Score(peerConnection.myId),
-  //   peer: new Score(peerConnection.peerId),
-  // }
 })
 peerRpc.on('close', () => {
   hide(ui.selectSide)
-  show(ui.table); disable(ui.table)
+  show(ui.description, ui.table)
+  disable(ui.table)
 })
 
 peerRpc.on('peerReady', ready => {

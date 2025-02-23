@@ -1,0 +1,36 @@
+{
+  "name": "The Guess Experiment",
+  "short_name": "Guess Experiment",
+  "description": "Exercise extra sensory perception alone or together with a peer.",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "screenshots": [
+    {
+      "src": "screenshot.webp",
+      "sizes": "853x536",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Before connecting to a peer."
+    }, {
+      "src": "screenshot-mobile.webp",
+      "sizes": "750x1334",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Before connecting to a peer."
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }, {
+      "src": "/icon-big.webp",
+      "sizes": "1024x1024",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}
