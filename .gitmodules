@@ -1,6 +1,6 @@
 [submodule "wrapped-elements"]
 	path = wrapped-elements
-	url = https://github.com/JoakimCh/wrapped-elements.git
+	url = https://github.com/JoakimCh/wrapped-elements
 [submodule "rtc-perfect-negotiator"]
 	path = rtc-perfect-negotiator
 	url = https://github.com/JoakimCh/rtc-perfect-negotiator
