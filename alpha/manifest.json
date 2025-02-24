@@ -1,0 +1,28 @@
+{
+  "name": "The Guess Experiment Alpha",
+  "short_name": "Guess Experiment Alpha",
+  "description": "Exercise extra sensory perception alone or together with a peer.",
+  "id": "/alpha",
+  "start_url": "/alpha",
+  "display": "standalone",
+  "screenshots": [
+    {
+      "src": "imgs/screenshot-desktop.webp",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Before connecting to a peer."
+    }, {
+      "src": "imgs/screenshot-mobile.webp",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Before connecting to a peer."
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icon-big.webp",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}
