@@ -52,7 +52,7 @@ document.body.append(
       ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
         for (const variant of ['star','box','waves','cross','circle']) {
           const card = e.div.class('card')(
-            e.img.draggable(false).src(`zener/${variant}.svg`).alt(variant)
+            e.img.draggable(false).src(`imgs/zener/${variant}.svg`).alt(variant)
           )
           cards.push(card)
         }
