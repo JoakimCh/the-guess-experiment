@@ -1,15 +1,15 @@
 [submodule "wrapped-elements"]
-	path = wrapped-elements
+	path = submodules/wrapped-elements
 	url = https://github.com/JoakimCh/wrapped-elements
 [submodule "rtc-perfect-negotiator"]
-	path = rtc-perfect-negotiator
+	path = submodules/rtc-perfect-negotiator
 	url = https://github.com/JoakimCh/rtc-perfect-negotiator
 [submodule "tiny-peerserver-client"]
-	path = tiny-peerserver-client
+	path = submodules/tiny-peerserver-client
 	url = https://github.com/JoakimCh/tiny-peerserver-client
 [submodule "rpc-bridge"]
-	path = rpc-bridge
+	path = submodules/rpc-bridge
 	url = https://github.com/JoakimCh/rpc-bridge
 [submodule "simple-event-emitter"]
-	path = simple-event-emitter
+	path = submodules/simple-event-emitter
 	url = https://github.com/JoakimCh/simple-event-emitter
