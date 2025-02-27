@@ -1,14 +1,14 @@
 {
-  "name": "The Guess Experiment Alpha",
-  "short_name": "Guess Experiment Alpha",
+  "name": "The Guess Experiment (staging)",
+  "short_name": "Guess Experiment (staging)",
   "description": "Exercise extra sensory perception alone or together with a peer.",
-  "id": "/alpha/",
-  "start_url": "/alpha/",
+  "id": "staging",
+  "start_url": "/staging/",
   "display": "standalone",
   "background_color": "#121212",
   "icons": [
     {
-      "src": "/icon-big.webp",
+      "src": "/imgs/icon-big.webp",
       "sizes": "1024x1024",
       "type": "image/webp",
       "purpose": "any maskable"
@@ -16,13 +16,13 @@
   ],
   "screenshots": [
     {
-      "src": "imgs/screenshot-desktop.webp",
+      "src": "/imgs/screenshot-desktop.webp",
       "sizes": "853x536",
       "type": "image/webp",
       "form_factor": "wide",
       "label": "Before connecting to a peer."
     }, {
-      "src": "imgs/screenshot-mobile.webp",
+      "src": "/imgs/screenshot-mobile.webp",
       "sizes": "750x1334",
       "type": "image/webp",
       "form_factor": "narrow",

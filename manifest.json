@@ -5,32 +5,28 @@
   "id": "/",
   "start_url": "/",
   "display": "standalone",
+  "background_color": "#121212",
+  "icons": [
+    {
+      "src": "/imgs/icon-big.webp",
+      "sizes": "1024x1024",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
   "screenshots": [
     {
-      "src": "screenshot.webp",
+      "src": "/imgs/screenshot-desktop.webp",
       "sizes": "853x536",
       "type": "image/webp",
       "form_factor": "wide",
       "label": "Before connecting to a peer."
     }, {
-      "src": "screenshot-mobile.webp",
+      "src": "/imgs/screenshot-mobile.webp",
       "sizes": "750x1334",
       "type": "image/webp",
       "form_factor": "narrow",
       "label": "Before connecting to a peer."
-    }
-  ],
-  "icons": [
-    {
-      "src": "/icon.png",
-      "sizes": "256x256",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }, {
-      "src": "/icon-big.webp",
-      "sizes": "1024x1024",
-      "type": "image/webp",
-      "purpose": "any maskable"
     }
   ]
 }

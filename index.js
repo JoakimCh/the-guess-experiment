@@ -52,7 +52,7 @@ document.body.append(
       ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
         for (const variant of ['star','box','waves','cross','circle']) {
           const card = e.div.class('card')(
-            e.img.draggable(false).src(`zener/${variant}.svg`).alt(variant)
+            e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant)
           )
           cards.push(card)
         }
@@ -219,19 +219,3 @@ peerRpc.on('nextRound', () => {
     })
   } else throw Error('lol')
 })
-
-class Score {
-  id = ''; total = 0; games = 0; last10 = []
-  constructor(id) {
-    this.id = id
-  }
-  register(win) {
-    this.games ++
-    if (win) this.total ++
-    last10.push(win)
-    if (this.last10.length > 10) {
-      this.last10.shift()
-    }
-  }
-}
-let score
