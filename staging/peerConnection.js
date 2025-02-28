@@ -2,6 +2,7 @@
 import {RTCPerfectNegotiator} from 'rtc-perfect-negotiator'
 import {PeerServerSignalingClient, peerjsIceConfig, ensureClientReady} from 'tiny-peerserver-client'
 import {e, debug, unwrap, css} from 'wrapped-elements'
+// PeerServerSignalingClient.debug = debug
 
 // some shared shit
 export let isDominant = true, myId, peerId
@@ -10,7 +11,6 @@ export function setRpcBridge(value) {
   rpcBridge = value
 }
 
-globalThis['DEBUG_SIGNALING'] = true
 /** @type {PeerServerSignalingClient} */
 let signalingClient
 /** @type {RTCPeerConnection} */

@@ -72,6 +72,7 @@ const prng = new PRNG()
 const peerRpc = new RPCBridge()
 peerConnection.setRpcBridge(peerRpc)
 let lastSide, alternating
+let wakeLock
 
 ui.sideFieldset.onchange = () => {
   // (radio button events bubbles up to it)
@@ -97,7 +98,8 @@ function checkReady() {
   peerRpc.localEmit('sidesSelected', {side: mySide, alternate})
 }
 
-peerRpc.on('open', () => {
+peerRpc.on('open', async () => {
+  wakeLock = await navigator.wakeLock?.request()
   hide(ui.description)
   show(ui.selectSide)
   if (peerConnection.isDominant) {
@@ -106,6 +108,7 @@ peerRpc.on('open', () => {
   }
 })
 peerRpc.on('close', () => {
+  wakeLock?.release()
   hide(ui.selectSide)
   show(ui.description, ui.table)
   disable(ui.table)
