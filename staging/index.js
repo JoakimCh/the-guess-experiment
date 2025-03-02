@@ -1,26 +1,21 @@
 
-import {e, unwrap, parallel, log, debug, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
 import {PRNG} from 'tiny-prng'
 import {RPCBridge} from 'rpc-bridge'
-// import {BinaryTemplate, t} from 'jlc-serializer'
-RPCBridge.debug = (...values) => {
-  console.debug('RPCBridge', ...values)
-}
+import * as peerConnection from './peerConnection.js'
+import {e, parallel, log, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
 
 navigator.serviceWorker.register('service-worker.js')
 
 await pageSetup({
   allowDarkTheme: false, // skip the style injection for this
   stylesheets: 'style.css',
+  stylesheetsAsLinks: true
 })
-
-// peerConnection.uiContainer can then adopt the stylesheets loaded
-const peerConnection = await import('./peerConnection.js')
 
 const ui = {}
 
 document.body.append(
-  ui.mainContainer = e.div.id('mainContainer')(
+  ui.mainContainer = e.div.class('mainContainer')(
     e.h1('The Guess Experiment'),
     ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.9.'),
     peerConnection.uiContainer,
@@ -48,31 +43,64 @@ document.body.append(
         )
       )
     ),
-    ui.game = e.div.id('ui_game')(
+    ui.game = e.article.id('ui_game')(
+      // e.h2('Zener cards'),
       ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
         for (const variant of ['star','box','waves','cross','circle']) {
           const card = e.div.class('card')(
-            e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant)
+            e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant),
+            e.span(variant)
           )
           cards.push(card)
         }
         return cards
-      })()),
-      ui.score = e.div.id('ui_score').class('vertical').hidden(true)(
-        ui.text_myScore = e.span('Total score: ', e.span('0 / 0')),
-        ui.text_myLast10 = e.span('Last 10 guesses: ', e.span('0 / 0'))
-      ),
+      })())
+    ),
+    ui.stats = e.article.id('ui_stats').hidden(true)(
+      e.h2('Statistics'),
+      e.p('Not implemented yet...')
+      // for current guesser (you or peer)
+      // total this session or total all sessions
+      // maybe a checkbox to toggle
+      // if not a game show your stats
     ),
     e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/the-guess-experiment'), '.')
   )
 )
+peerConnection.ui.buttonContainer.append(
+  ui.c_childMode = e.label.hidden(true)('Child mode:', 
+    ui.checkbox_childMode = e.input.type('checkbox').name('childMode')
+    .checked(localStorage.getItem('cb_childMode') == 'true')
+    .on('change', ({target:cb}) => localStorage.setItem('cb_childMode', cb.checked))()
+  ),
+  e.label('Show stats:', 
+    ui.checkbox_showStats = e.input.type('checkbox').name('showStats')
+    .checked(localStorage.getItem('cb_showStats') == 'true')
+    .on('change', ({target:cb}) => localStorage.setItem('cb_showStats', cb.checked))()
+  ),
+  ui.button_statExplorer = e.button('Stat explorer')
+)
+ui.button_statExplorer.onclick = async () => {
+  const statExplorer = await import('./statExplorer.js')
+  document.body.replaceChildren(statExplorer.uiContainer)
+  statExplorer.ui.button_back.onclick = () => {
+    document.body.replaceChildren(ui.mainContainer)
+  }
+}
+ui.checkbox_showStats.onchange = ({target: {checked}}) => {
+  checked ? show(ui.stats) : hide(ui.stats)
+}
+if (ui.checkbox_showStats.checked) {
+  show(ui.stats)
+}
+
 
 const cards = document.querySelectorAll('.card') // getElementsByClassName('card')
 const prng = new PRNG()
 const peerRpc = new RPCBridge()
 peerConnection.setRpcBridge(peerRpc)
-let lastSide, alternating
 let wakeLock
+let lastSide, alternating
 
 ui.sideFieldset.onchange = () => {
   // (radio button events bubbles up to it)
@@ -99,7 +127,7 @@ function checkReady() {
 }
 
 peerRpc.on('open', async () => {
-  wakeLock = await navigator.wakeLock?.request()
+  try {wakeLock = await navigator.wakeLock?.request()} catch {}
   hide(ui.description)
   show(ui.selectSide)
   if (peerConnection.isDominant) {
@@ -157,34 +185,46 @@ peerRpc.on('nextRound', () => {
   peerRpc.once('close', cleanup)
   function cleanup() {
     container.remove()
+    hide(ui.c_childMode)
     parallel(cards).classList.remove('correct', 'selected', 'showdown')
     peerRpc.off('close', cleanup)
     peerRpc.off('nextRound', cleanup)
   }
   if (side == 'guesser') {
+    show(ui.c_childMode)
     hide(ui.table) // hide the cards
-    container(
-      e.p(`A random card is shown to your peer, to score see if you can guess which!`, e.br, `(remote view it or use telepathic abilities)`),
-      e.button.add('Make your guess').onclick(viewCards)
-    )
+    if (ui.checkbox_childMode.checked) {
+      viewCards()
+    } else {
+      container(
+        e.p(`A random card is shown to your peer, to score see if you can guess which!`, e.br, `(remote view it or use telepathic abilities)`),
+        e.button.add('Make your guess').onclick(viewCards)
+      )
+    }
     function viewCards() {
-      container.replaceChildren()
+      const text = e.span('Guess the card shown on the other screen.')
+      container.replaceChildren(text)
       show(ui.table); enable(ui.table)
       let firstGuess = true
       parallel(cards).onclick = ({currentTarget: currentCard}) => {
         parallel(cards).classList.remove('selected')
         currentCard.classList.add('selected')
         if (firstGuess) {firstGuess = false
-          container.add(e.button.add('Submit your guess!').onclick(submitGuess))
+          text.remove()
+          if (ui.checkbox_childMode.checked) {
+            submitGuess()
+          } else {
+            container.add(e.button.add('Submit your guess!').onclick(submitGuess))
+          }
         }
       }
     }
-    async function submitGuess({currentTarget: button}) {
-      button.remove()
+    async function submitGuess({currentTarget: button} = {}) {
+      button?.remove()
       parallel(cards).onclick = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
       const correctIndex = await peerRpc.call('guess', selectedIndex)
-      setTimeout(() => {
+      // setTimeout(() => {
         cards[correctIndex].classList.add('correct')
         parallel(cards).classList.add('showdown')
         if (selectedIndex == correctIndex) {
@@ -194,9 +234,13 @@ peerRpc.on('nextRound', () => {
         }
         setTimeout(() => {
           // now the peer has been given enough time to see the result and we can start the next round
-          container.add(e.button.add('Start next round').onclick(() => signalNextRound()))
-        }, 1000)
-      }, 1000)
+          if (ui.checkbox_childMode.checked) {
+            signalNextRound()
+          } else {
+            container.add(e.button.add('Start next round').onclick(signalNextRound))
+          }
+        }, ui.checkbox_childMode.checked ? 3000 : 1000)
+      // }, 1000)
     }
   } else if (side == 'viewer') {
     enable(ui.table) // make cards bright
@@ -222,19 +266,3 @@ peerRpc.on('nextRound', () => {
     })
   } else throw Error('lol')
 })
-
-class Score {
-  id = ''; total = 0; games = 0; last10 = []
-  constructor(id) {
-    this.id = id
-  }
-  register(win) {
-    this.games ++
-    if (win) this.total ++
-    last10.push(win)
-    if (this.last10.length > 10) {
-      this.last10.shift()
-    }
-  }
-}
-let score

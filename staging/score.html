@@ -1,2 +1,180 @@
 <!doctype html>
+<meta charset="UTF-8">
 <script type="module" src="scoreDatabase.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    .input-group {
+        margin: 10px 0;
+    }
+    #results {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        display: none;
+    }
+    .success { color: green; }
+    .warning { color: orange; }
+    .danger { color: red; }
+    #canvas {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+    }
+</style>
+
+
+<h2>Card Guessing Experiment Statistics</h2>
+
+<div class="input-group">
+    <label for="total">Total number of guesses:</label><br>
+    <input type="number" id="total" min="1" placeholder="Enter total guesses">
+</div>
+
+<div class="input-group">
+    <label for="correct">Number of correct guesses:</label><br>
+    <input type="number" id="correct" min="0" placeholder="Enter correct guesses">
+</div>
+
+<button onclick="calculateResults()">Calculate Results</button>
+
+<div id="results">
+    <h3>Results:</h3>
+    <p>Total Guesses: <span id="totalDisplay"></span></p>
+    <p>Correct Guesses: <span id="correctDisplay"></span></p>
+    <p>Success Rate: <span id="rateDisplay"></span>%</p>
+    <p>Expected Chance: 20% (1 in 5)</p>
+    <p>Performance: <span id="performance"></span></p>
+    <canvas id="canvas" width="500" height="200"></canvas>
+</div>
+
+<script>
+    function calculateResults() {
+        const total = parseInt(document.getElementById('total').value);
+        const correct = parseInt(document.getElementById('correct').value);
+        
+        // Input validation
+        if (isNaN(total) || isNaN(correct) || total < 1 || correct < 0 || correct > total) {
+            alert('Please enter valid numbers: Total must be >= 1, Correct must be >= 0 and <= Total');
+            return;
+        }
+
+        // Calculate statistics
+        const successRate = (correct / total) * 100;
+        const expectedRate = 20;
+        const expectedCorrect = total * 0.2;
+        const stdDev = Math.sqrt(total * 0.2 * 0.8);
+        const zScore = (correct - expectedCorrect) / stdDev;
+
+        // Determine performance
+        let performanceText, performanceClass;
+        if (Math.abs(zScore) < 1) {
+            performanceText = 'Within expected chance (not statistically significant)';
+            performanceClass = 'warning';
+        } else if (zScore > 1) {
+            performanceText = 'Above expected chance';
+            performanceClass = 'success';
+        } else {
+            performanceText = 'Below expected chance';
+            performanceClass = 'danger';
+        }
+
+        // Display text results
+        document.getElementById('totalDisplay').textContent = total;
+        document.getElementById('correctDisplay').textContent = correct;
+        document.getElementById('rateDisplay').textContent = successRate.toFixed(2);
+        document.getElementById('performance').textContent = performanceText;
+        document.getElementById('performance').className = performanceClass;
+        document.getElementById('results').style.display = 'block';
+
+        // Draw normal distribution curve
+        drawCurve(total, correct, expectedCorrect, stdDev);
+    }
+
+    function drawCurve(total, correct, expectedCorrect, stdDev) {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+
+        // Calculate range (±3 standard deviations)
+        const minX = expectedCorrect - 3 * stdDev;
+        const maxX = expectedCorrect + 3 * stdDev;
+        const range = maxX - minX;
+
+        // Normal distribution function
+        function normalDist(x, mean, sd) {
+            return Math.exp(-((x - mean) ** 2) / (2 * sd * sd)) / (sd * Math.sqrt(2 * Math.PI));
+        }
+
+        // Draw curve
+        ctx.beginPath();
+        ctx.strokeStyle = 'blue';
+        let maxHeight = 0;
+        const points = [];
+        
+        for (let x = 0; x <= width; x++) {
+            const realX = minX + (x / width) * range;
+            const y = normalDist(realX, expectedCorrect, stdDev);
+            maxHeight = Math.max(maxHeight, y);
+            points.push({x: x, y: y});
+        }
+
+        for (let i = 0; i < points.length; i++) {
+            const scaledY = height - (points[i].y / maxHeight) * (height - 20);
+            if (i === 0) ctx.moveTo(points[i].x, scaledY);
+            else ctx.lineTo(points[i].x, scaledY);
+        }
+        ctx.stroke();
+
+        // Draw mean line
+        const meanX = ((expectedCorrect - minX) / range) * width;
+        ctx.beginPath();
+        ctx.strokeStyle = 'gray';
+        ctx.moveTo(meanX, 0);
+        ctx.lineTo(meanX, height);
+        ctx.stroke();
+
+        // Draw ±1σ lines (expected area bounds)
+        const lowerBound = ((expectedCorrect - stdDev - minX) / range) * width;
+        const upperBound = ((expectedCorrect + stdDev - minX) / range) * width;
+        
+        ctx.beginPath();
+        ctx.strokeStyle = 'gray';
+        ctx.setLineDash([5, 5]); // Dashed line
+        ctx.moveTo(lowerBound, 0);
+        ctx.lineTo(lowerBound, height);
+        ctx.moveTo(upperBound, 0);
+        ctx.lineTo(upperBound, height);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset to solid line
+
+        // Draw result line (clamped to canvas edges)
+        let resultX = ((correct - minX) / range) * width;
+        resultX = Math.max(0, Math.min(width, resultX)); // Clamp to [0, width]
+        ctx.beginPath();
+        ctx.strokeStyle = 'red';
+        ctx.moveTo(resultX, 0);
+        ctx.lineTo(resultX, height);
+        ctx.stroke();
+
+        // Add labels
+        ctx.fillStyle = 'black';
+        ctx.font = '12px Arial';
+        ctx.fillText('Expected', meanX - 20, 15);
+        ctx.fillText('-1&sigma;', lowerBound - 15, 15);
+        ctx.fillText('+1σ', upperBound - 15, 15);
+        // ctx.fillText('Result', resultX - 15, height - 10);
+        
+        // Adjust label position if at edge
+        if (resultX === 0) ctx.fillText('Result', 5, height - 10);
+        else if (resultX === width) ctx.fillText('Result', width - 40, height - 10);
+    }
+</script>
