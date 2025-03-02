@@ -71,7 +71,9 @@ ui.button_ready.onclick = () => {
 }
 
 ui.button_abort.onclick = () => {
-  resetConnection()
+  if (confirm('Abort the connection?')) {
+    resetConnection()
+  }
 }
 
 ui.button_connect.onclick = () => {

@@ -5,8 +5,9 @@
 }
 
 html, body {
-  overscroll-behavior-y: contain;
-  /* fixes refresh on down scroll */
+  overscroll-behavior-y: contain; /* fixes refresh on down scroll */
+  color: light-dark(black, white);
+  background-color: light-dark(white, black);
 }
 
 * {
@@ -39,6 +40,34 @@ fieldset {
   text-align: center;
 }
 
+article {
+    /* display: flex;
+  flex-direction: column;
+  align-items: center; */
+  background-color: inherit;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border: 1px solid red;
+  border-radius: 10px;
+  padding: 15px 5px;
+  width: 100%;
+  >h2 {
+    /* align-self: center; */
+    justify-self: center;
+    /* text-align: center; */
+    font-size: 1em;
+    position: relative;
+    top: -40px;
+    margin-top: 15px;
+    margin-bottom: -30px;
+    background-color: inherit;
+    padding: 0px 10px;
+    border-radius: 10px;
+    width: max-content;
+    border: 1px solid red;
+  }
+}
+
 label {
   user-select: none;
   display: inline-flex;
@@ -56,25 +85,29 @@ button:enabled, input:enabled {
 }
 
 body {
-  display: flex;
-  justify-content: center;
+  /* display: flex; */
+  /* justify-content: center; */
+  /* flex-direction: column; */
   margin: 0;
 }
 
 h1 {
   margin: 0;
-  margin-top: 10px;
-  margin-bottom: 10px;
-  text-align: center;
+  margin-top: 5px;
+  /* margin-bottom: 10px; */
+  /* text-align: center; */
 }
 
-h1, p {
-  user-select: text;
+h2 {
+  margin: 0;
+  /* margin-top: 15px; */
+  margin-bottom: 10px;
 }
 
 .online, .offline, .reconnecting {
   font-weight: bold;
   font-family: monospace;
+  margin-right: 10px;
 }
 .offline {
   color: orangered;
@@ -99,7 +132,8 @@ h1, p {
   align-items: center;
 }
 
-#mainContainer {
+.mainContainer {
+  background-color: inherit;
   justify-self: center;
   display: flex;
   margin: 5px;
@@ -127,6 +161,18 @@ h1, p {
   width: 100%;
 }
 
+#ui_stats {
+  /* display: flex;
+  flex-direction: column;
+  align-items: center; */
+  /* margin-top: 10px; */
+  /* margin-bottom: 10px;
+  border: 1px solid red;
+  border-radius: 10px;
+  padding: 15px 5px;
+  width: 100%; */
+}
+
 #ui_score {
   margin-top: 15px;
 }
@@ -140,6 +186,8 @@ h1, p {
   row-gap: 5px;
   margin-bottom: 10px;
   > .card {
+    color: black;
+    font-weight: bold;
     cursor: pointer;
     width: 100px;
     transition: 
@@ -159,6 +207,10 @@ h1, p {
     }
     padding: 5px;
     display: flex;
+    justify-content: end;
+    /* justify-content: center; */
+    align-items: center;
+    flex-direction: column;
     height: 130px;
     background-color: blanchedalmond;
     border-radius: 10px;
