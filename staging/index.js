@@ -17,7 +17,7 @@ const ui = {}
 document.body.append(
   ui.mainContainer = e.div.class('mainContainer')(
     e.h1('The Guess Experiment'),
-    ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.9.'),
+    ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.10.'),
     peerConnection.uiContainer,
     ui.selectSide = e.form.id('form_selectSide').class('horizontal').hidden(true)(
       ui.sideFieldset = e.fieldset(e.legend('Select side:'),
@@ -44,7 +44,6 @@ document.body.append(
       )
     ),
     ui.game = e.article.id('ui_game')(
-      // e.h2('Zener cards'),
       ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
         for (const variant of ['star','box','waves','cross','circle']) {
           const card = e.div.class('card')(
