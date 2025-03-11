@@ -1,6 +1,7 @@
 
 :root {
   color-scheme: light dark;
+  /* color-scheme: light; */
 }
 
 * {
@@ -16,15 +17,16 @@ html, body {
 }
 
 body {
+  font-family: Arial, Helvetica, sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 0;
+  margin: 5px;
 }
 
 h1 {
+  text-align: center;
   margin: 0;
-  margin-top: 5px;
 }
 
 h2 {
@@ -35,12 +37,6 @@ h2 {
 p {
   text-align: center;
   margin: 0;
-  margin-bottom: 15px;
-}
-
-fieldset {
-  border-radius: 10px;
-  text-align: center;
 }
 
 label {
@@ -50,14 +46,12 @@ label {
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  margin-bottom: 5px;
   &:has(input:enabled) {
     cursor: pointer;
   }
 }
 
 input, button {
-  margin-right: 5px;
   height: 25px;
 }
 
@@ -77,7 +71,6 @@ button:enabled, input:enabled {
 .online, .offline, .reconnecting {
   font-weight: bold;
   font-family: monospace;
-  margin-right: 10px;
 }
 
 .online {
@@ -97,42 +90,49 @@ button:enabled, input:enabled {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
+  gap: 5px 8px;
 }
 
 .vertical {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 10px 0px;
+}
+
+fieldset {
+  border-radius: 10px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0px 10px;
+  &.vertical {
+    gap: 0;
+  }
+  padding: 0 10px;
+  padding-bottom: 5px;
+  legend {
+    margin: auto;
+  }
 }
 
 article {
   display: flex;
+  gap: 8px;
   flex-direction: column;
   align-items: center;
   background-color: inherit;
-  margin: 10px 0;
   border: 1px solid red;
   border-radius: 10px;
   padding: 15px 5px;
   width: 100%;
-  > h2 {
-    font-size: 1em;
-    position: relative;
-    top: -40px;
-    margin-top: 15px;
-    margin-bottom: -30px;
-    background-color: inherit;
-    padding: 0 10px;
-    border-radius: 10px;
-    width: max-content;
-    border: 1px solid red;
-  }
 }
 
 .mainContainer {
   background-color: inherit;
   display: flex;
-  margin: 5px;
+  gap: 10px;
   flex-direction: column;
   align-items: center;
   height: 100%;
@@ -140,19 +140,14 @@ article {
   min-width: min-content; /* prevents a bug where it can become smaller than content: */
 }
 
-#form_selectSide {
-  margin-top: 10px;
-}
-
 #ui_game {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 10px 0;
   border: 1px solid red;
   border-radius: 10px;
-  padding: 15px 5px;
   width: 100%;
+  gap: 15px;
 }
 
 #ui_table {
@@ -162,7 +157,6 @@ article {
   flex-wrap: wrap;
   gap: 7px;
   row-gap: 5px;
-  margin-bottom: 10px;
   > .card {
     color: black;
     font-weight: bold;
@@ -194,4 +188,13 @@ article {
       opacity: 0.05;
     }
   }
+}
+
+#ui_stats {
+  padding: 5px;
+}
+
+#showStatsFor {
+  width: 100%;
+  /* padding: 0 10px; */
 }
