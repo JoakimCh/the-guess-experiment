@@ -4,7 +4,7 @@ import {PeerServerSignalingClient, peerjsIceConfig, ensureClientReady} from 'tin
 import {e, debug, show, hide, disable, enable} from 'wrapped-elements'
 // PeerServerSignalingClient.debug = debug
 
-export let isDominant = true, myId, peerId
+export let isDominant = true, myId, peerId, peerAlias
 let rpcBridge
 export function setRpcBridge(value) {
   rpcBridge = value
@@ -18,7 +18,7 @@ let peerConnection
 /** @type {RTCDataChannel} */
 let dataChannel
 
-export const uiContainer = e.div.id('ui_peerConnection')(
+export const uiContainer = e.div.class('vertical')(
   ui.idForm = e.form.onsubmit(()=>false).class('horizontal')(
     e.label('My ID:',
       e.input.type('text').name('myId').autocapitalize('none')
@@ -35,11 +35,14 @@ export const uiContainer = e.div.id('ui_peerConnection')(
         sessionStorage.getItem('peerId') || localStorage.getItem('peerId')
       )
       .on('keydown', 
-        ({key}) => key == 'Enter' ? ui.button_ready.focus() : null
+        ({key}) => key == 'Enter' ? ui.idForm.alias.focus() : null
       )()
     ),
     e.label('Peer alias:', 
-      e.input.type('text').name('alias').size(10)
+      e.input.type('text').name('alias')
+      .size(10).value(
+        sessionStorage.getItem('alias') || localStorage.getItem('alias')
+      )
       .on('keydown', 
         ({key}) => key == 'Enter' ? ui.button_ready.focus() : null
       )()
@@ -49,21 +52,24 @@ export const uiContainer = e.div.id('ui_peerConnection')(
     ui.text_connection = e.span.class('offline')('Offline'),
     ui.button_ready = e.button('Ready for peer connection'),
     ui.button_connect = e.button.hidden(true)('Try to connect'),
-    ui.button_abort = e.button.hidden(true)('Abort peer connection'),
+    ui.button_abort = e.button.hidden(true)('Abort peer connection')
   )
 )
 
 ui.button_ready.onclick = () => {
   myId = ui.idForm.myId.value
   peerId = ui.idForm.peerId.value
+  peerAlias = ui.idForm.alias.value
   if (!myId || !peerId) {
     alert('Please fill out "my ID" and "peer ID"!')
     return
   }
   sessionStorage.setItem('myId', myId)
   sessionStorage.setItem('peerId', peerId)
+  sessionStorage.setItem('alias', peerAlias)
   localStorage.setItem('myId', myId)
   localStorage.setItem('peerId', peerId)
+  localStorage.setItem('alias', peerAlias)
   disable(ui.idForm)
   hide(ui.button_ready)
   show(ui.button_abort)

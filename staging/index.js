@@ -3,6 +3,8 @@ import {PRNG} from 'tiny-prng'
 import {RPCBridge} from 'rpc-bridge'
 import * as peerConnection from './peerConnection.js'
 import {e, parallel, log, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
+import * as scoreDB from './scoreDatabase.js'
+RPCBridge.debug = console.debug
 
 navigator.serviceWorker.register('service-worker.js')
 
@@ -17,7 +19,7 @@ const ui = {}
 document.body.append(
   ui.mainContainer = e.div.class('mainContainer')(
     e.h1('The Guess Experiment'),
-    ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices. Version: 0.10.'),
+    ui.description = e.p('Connect to a peer and one of you will try to guess the randomly selected card which is shown on the other screen. This can be done using remote viewing (extra sensory perception) or telepathy. You can even play with yourself by connecting two devices.'),
     peerConnection.uiContainer,
     ui.selectSide = e.form.id('form_selectSide').class('horizontal').hidden(true)(
       ui.sideFieldset = e.fieldset(e.legend('Select side:'),
@@ -56,8 +58,6 @@ document.body.append(
       })())
     ),
     ui.stats = e.article.id('ui_stats').hidden(true)(
-      e.h2('Statistics'),
-      e.p('Not implemented yet...')
       // for current guesser (you or peer)
       // total this session or total all sessions
       // maybe a checkbox to toggle
@@ -86,13 +86,18 @@ ui.button_statExplorer.onclick = async () => {
     document.body.replaceChildren(ui.mainContainer)
   }
 }
-ui.checkbox_showStats.onchange = ({target: {checked}}) => {
+let statViewer
+ui.checkbox_showStats.onchange = async ({target: {checked}}) => {
   checked ? show(ui.stats) : hide(ui.stats)
+  if (checked && !statViewer) {
+    statViewer = await import('./stats.js')
+    ui.stats.append(...statViewer.uiElements)
+    // statViewer.update({totalGuesses: 210, correctGuesses: 41, numCards: 5})
+  }
 }
 if (ui.checkbox_showStats.checked) {
-  show(ui.stats)
+  ui.checkbox_showStats.onchange({target: {checked: true}})
 }
-
 
 const cards = document.querySelectorAll('.card') // getElementsByClassName('card')
 const prng = new PRNG()
@@ -157,10 +162,16 @@ peerRpc.on('peerSide', peerSide => {
   radio.checked = true
 })
 
-peerRpc.on('sidesSelected', ({side, alternate}) => {
+peerRpc.on('sidesSelected', async ({side, alternate}) => {
+  hide(ui.selectSide)
   ui.checkbox_ready.checked = false
   ui.checkbox_peerReady.checked = false
+  await scoreDB.newSession({
+    numCards: 5,
+    peer: peerConnection.peerAlias || peerConnection.peerId
+  })
   lastSide = side
+  alternating = false
   peerRpc.localEmit('nextRound')
   alternating = alternate
 })
@@ -175,7 +186,9 @@ peerRpc.on('nextRound', () => {
   if (alternating) {
     side = (lastSide == 'viewer' ? 'guesser' : 'viewer')
   }
-  hide(ui.selectSide)
+  statViewer?.setSide(side)
+  statViewer?.update()
+  lastSide = side
   // create a container for game specific elements
   const container = e.div.class('vertical')
   // add it after the table showing the cards
@@ -201,7 +214,7 @@ peerRpc.on('nextRound', () => {
       )
     }
     function viewCards() {
-      const text = e.span('Guess the card shown on the other screen.')
+      const text = e.p('Guess the card shown on the other screen.')
       container.replaceChildren(text)
       show(ui.table); enable(ui.table)
       let firstGuess = true
@@ -223,23 +236,24 @@ peerRpc.on('nextRound', () => {
       parallel(cards).onclick = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
       const correctIndex = await peerRpc.call('guess', selectedIndex)
-      // setTimeout(() => {
-        cards[correctIndex].classList.add('correct')
-        parallel(cards).classList.add('showdown')
-        if (selectedIndex == correctIndex) {
-          container.add(e.p(`Correct!`))
+      cards[correctIndex].classList.add('correct')
+      parallel(cards).classList.add('showdown')
+      if (selectedIndex == correctIndex) {
+        container.add(e.p(`Correct!`))
+        scoreDB.saveResult({correct: true, peerGuess: false})
+      } else {
+        container.add(e.p(`Wrong.`))
+        scoreDB.saveResult({correct: false, peerGuess: false})
+      }
+      statViewer?.update()
+      setTimeout(() => {
+        // now the peer has been given enough time to see the result and we can start the next round
+        if (ui.checkbox_childMode.checked) {
+          signalNextRound()
         } else {
-          container.add(e.p(`Wrong.`))
+          container.add(e.button.add('Start next round').onclick(signalNextRound))
         }
-        setTimeout(() => {
-          // now the peer has been given enough time to see the result and we can start the next round
-          if (ui.checkbox_childMode.checked) {
-            signalNextRound()
-          } else {
-            container.add(e.button.add('Start next round').onclick(signalNextRound))
-          }
-        }, ui.checkbox_childMode.checked ? 3000 : 1000)
-      // }, 1000)
+      }, ui.checkbox_childMode.checked ? 3000 : 1000)
     }
   } else if (side == 'viewer') {
     enable(ui.table) // make cards bright
@@ -257,9 +271,12 @@ peerRpc.on('nextRound', () => {
       container.replaceChildren()
       if (indexGuessed == correctIndex) {
         container.add(e.p(`Peer guessed correct!`))
+        scoreDB.saveResult({correct: true, peerGuess: true})
       } else {
         container.add(e.p(`Peer guessed wrong.`))
+        scoreDB.saveResult({correct: false, peerGuess: true})
       }
+      statViewer?.update()
       container.add(e.p(`Waiting for peer to start next round...`))
       return correctIndex
     })
