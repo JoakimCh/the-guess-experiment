@@ -90,9 +90,13 @@ let statViewer
 ui.checkbox_showStats.onchange = async ({target: {checked}}) => {
   checked ? show(ui.stats) : hide(ui.stats)
   if (checked && !statViewer) {
+    // yup, we can dynamically load stuff
     statViewer = await import('./stats.js')
     ui.stats.append(...statViewer.uiElements)
-    // statViewer.update({totalGuesses: 210, correctGuesses: 41, numCards: 5})
+    if (lastSide) {
+      statViewer.setSide(lastSide)
+      statViewer.update()
+    }
   }
 }
 if (ui.checkbox_showStats.checked) {
