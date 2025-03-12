@@ -4,7 +4,7 @@ import {RPCBridge} from 'rpc-bridge'
 import * as peerConnection from './peerConnection.js'
 import {e, parallel, log, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
 import * as scoreDB from './scoreDatabase.js'
-RPCBridge.debug = console.debug
+// RPCBridge.debug = console.debug
 
 navigator.serviceWorker.register('service-worker.js')
 

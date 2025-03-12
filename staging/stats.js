@@ -15,8 +15,11 @@ export const uiElements = [
       e.label('Both:',
         e.input.type('radio').name('show').value('both')
       ),
-      e.label('Session only:',
-        e.input.type('checkbox').name('sessionOnly')
+      e.label('Beyond session:',
+        e.input.type('checkbox').name('beyondSession')
+      ),
+      ui.l_onlyWithPeer = e.label('Only with this peer:',
+        e.input.type('checkbox').name('onlyWithPeer')
       )
     )
   ),
@@ -36,14 +39,19 @@ export const uiElements = [
   })()
 ]
 
-hide(ui.showStatsFor, ui.myStats, ui.peerStats)
+hide(ui.showStatsFor, ui.myStats, ui.peerStats, ui.l_onlyWithPeer)
 ui.form.show.value = 'guesser'
 
 ui.form.onchange = ({target}) => {
   if (target.type == 'radio') {
     setShown(target.value)
-  } else {
+  } else { // a checkbox
     update()
+    if (ui.form.beyondSession.checked) {
+      show(ui.l_onlyWithPeer)
+    } else {
+      hide(ui.l_onlyWithPeer)
+    }
   }
 }
 
@@ -128,6 +136,8 @@ export function drawGraph(canvas, {zScore, scoreWindow = 3}) {
   const yScale = (height-graphTop) / pdfMax
   const graphBottom = graphTop + pdfMax * yScale
   const oneStdDev = 1 * xScale
+  const maxX = scoreWindow * xScale
+  const minX = -scoreWindow * xScale
 
   ctx.translate(width / 2, 0) // make center x 0
   ctx.lineWidth = 3
@@ -161,8 +171,10 @@ export function drawGraph(canvas, {zScore, scoreWindow = 3}) {
   ctx.setLineDash([])
 
   ctx.beginPath()
-  ctx.moveTo(zScore * xScale, graphTop)
-  ctx.lineTo(zScore * xScale, graphBottom)
+  let scoreX = zScore * xScale
+  scoreX = Math.max(minX, Math.min(scoreX, maxX))
+  ctx.moveTo(scoreX, graphTop)
+  ctx.lineTo(scoreX, graphBottom)
   ctx.strokeStyle = 'red'
   ctx.stroke()
 
@@ -188,24 +200,27 @@ export function setSide(side) {
 // setSide('guesser')
 
 export function update() {
-  const {session, myTotal, peerTotal} = scoreDB.getScore()
-  for (const total of [myTotal, peerTotal]) {
+  const {session, myTotal, peerTotal, myTotalWithPeer} = scoreDB.getScore()
+  for (let total of [myTotal, peerTotal]) {
     const suffix = (total == myTotal ? 'my' : 'peer')
     const sessions = []
-    if (ui.form.sessionOnly.checked) {
-      if (sessions) {
+    if (ui.form.beyondSession.checked) {
+      if (ui.form.onlyWithPeer.checked && suffix == 'my') {
+        total = myTotalWithPeer // change it with this then
+      }
+      for (const numCards in total) {
+        sessions.push({
+          numCards,
+          total: total[numCards].total,
+          correct: total[numCards].correct,
+        })
+      }
+    } else {
+      if (session) {
         sessions.push({
           numCards: session.numCards,
           total: session[suffix+'Total'],
           correct: session[suffix+'Correct']
-        })
-      }
-    } else {
-      for (const key in total) {
-        sessions.push({
-          numCards: key,
-          total: total[key].total,
-          correct: total[key].correct,
         })
       }
     }

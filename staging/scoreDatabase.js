@@ -2,7 +2,7 @@
 /** @type {IDBDatabase} */
 let db // the open DB
 let sessionId, session
-let myTotal, peerTotal
+let myTotal, peerTotal, myTotalWithPeer
 
 await init() // connect to database
 
@@ -60,6 +60,13 @@ export function newSession({peer, numCards = 5}) {
         peerTotal[numCards] = {total: 0, correct: 0}
       }
     }
+    transaction.objectStore('kv').get('myTotalWithPeer_'+peer)
+    .onsuccess = ({target: {result}}) => {
+      myTotalWithPeer = result || {}
+      if (!myTotalWithPeer[numCards]) {
+        myTotalWithPeer[numCards] = {total: 0, correct: 0}
+      }
+    }
   })
 }
 
@@ -77,9 +84,11 @@ export function saveResult({correct, peerGuess}) {
   } else {
     session.myTotal ++
     myTotal[numCards].total ++
+    myTotalWithPeer[numCards].total ++
     if (correct) {
       session.myCorrect ++
       myTotal[numCards].correct ++
+      myTotalWithPeer[numCards].correct ++
     }
   }
   return new Promise((resolve, reject) => {
@@ -91,12 +100,12 @@ export function saveResult({correct, peerGuess}) {
     .onsuccess = ({target: {result}}) => {
       sessionId = result
     }
+    const kvStore = transaction.objectStore('kv')
     if (peerGuess) {
-      transaction.objectStore('kv')
-      .put(peerTotal, 'peerTotal_'+session.peer)
+      kvStore.put(peerTotal, 'peerTotal_'+session.peer)
     } else {
-      transaction.objectStore('kv')
-      .put(myTotal, 'myTotal')
+      kvStore.put(myTotal, 'myTotal')
+      kvStore.put(myTotalWithPeer, 'myTotalWithPeer_'+session.peer)
     }
   })
 }
@@ -113,7 +122,7 @@ export function getSessionsWith(peer) {
 
 /** Get the score related to the session, also the total score from stored results. */
 export function getScore() {
-  return {session, myTotal, peerTotal}
+  return {session, myTotal, peerTotal, myTotalWithPeer}
 }
 
 // await newSession({peer: 'bob', numCards: 5})
