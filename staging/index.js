@@ -294,9 +294,9 @@ peerRpc.on('nextRound', () => {
         }
       }
     }
-    async function submitGuess({currentTarget: button} = {}) {
+    async function submitGuess() {
+      nextButton?.remove()
       nextButton = null
-      button?.remove()
       card_onSelected = undefined
       card_onBigTouch = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
