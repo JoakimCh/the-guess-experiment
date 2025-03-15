@@ -271,6 +271,7 @@ peerRpc.on('nextRound', () => {
       )
     }
     function viewCards() {
+      nextButton?.remove()
       nextButton = null
       const text = e.p('Guess the card shown on the other screen.')
       container.replaceChildren(text)
