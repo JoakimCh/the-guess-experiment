@@ -122,7 +122,8 @@ ui.modeSelect.onchange = () => {
       ui.mainContainer.classList.toggle('blur')
       // close it by long pressing the modal background:
       new PressHandler(bigCardsModal).onRelease = ({longPress, target}) => {
-        if (!longPress || target != bigCardsModal) return
+        if (target != bigCardsModal) return
+        if (ui.modeSelect.value == 'blind' && !longPress) return
         ui.modeSelect.value = 'normal' // does not trigger onchange
         bigCardsModal.remove()
         bigCardsModal = null

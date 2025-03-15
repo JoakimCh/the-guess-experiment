@@ -4,6 +4,7 @@ import {RPCBridge} from 'rpc-bridge'
 import * as peerConnection from './peerConnection.js'
 import {e, parallel, log, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
 import * as scoreDB from './scoreDatabase.js'
+import {PressHandler} from './pressHandler.js'
 // RPCBridge.debug = console.debug
 
 navigator.serviceWorker.register('service-worker.js')
@@ -52,25 +53,22 @@ document.body.append(
             e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant),
             e.span(variant)
           )
+          card.dataset.variant = variant
           cards.push(card)
         }
         return cards
       })())
     ),
-    ui.stats = e.article.id('ui_stats').hidden(true)(
-      // for current guesser (you or peer)
-      // total this session or total all sessions
-      // maybe a checkbox to toggle
-      // if not a game show your stats
-    ),
+    ui.stats = e.article.id('ui_stats').hidden(true)(),
     e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/the-guess-experiment'), '.')
   )
 )
 peerConnection.ui.buttonContainer.append(
-  ui.c_childMode = e.label.hidden(true)('Child mode:', 
-    ui.checkbox_childMode = e.input.type('checkbox').name('childMode')
-    .checked(localStorage.getItem('cb_childMode') == 'true')
-    .on('change', ({target:cb}) => localStorage.setItem('cb_childMode', cb.checked))()
+  ui.modeSelect = e.select.name('mode').hidden(true)(
+    e.option.value('normal')('normal mode'),
+    e.option.value('child')('child mode'),
+    e.option.value('blind')('blind mode'),
+    e.option.value('mixed')('mixed mode'),
   ),
   e.label('Show stats:', 
     ui.checkbox_showStats = e.input.type('checkbox').name('showStats')
@@ -103,12 +101,65 @@ if (ui.checkbox_showStats.checked) {
   ui.checkbox_showStats.onchange({target: {checked: true}})
 }
 
-const cards = document.querySelectorAll('.card') // getElementsByClassName('card')
+let bigCardsModal, previousMode
+ui.modeSelect.onchange = () => {
+  const newMode = ui.modeSelect.value
+  if (newMode == 'normal') { // switched back to normal
+    // log('normal mode')
+  } else {
+    if (newMode != 'child' && !navigator.maxTouchPoints) {
+      ui.modeSelect.value = 'normal'
+      return alert(`Your devise does not support touch which is a requirement for this mode.`)
+    }
+    if (newMode == 'blind' && !voices.length) {
+      ui.modeSelect.value = 'normal'
+      return alert(`Your browser does not support a speech synthesizer which is a requirement for this mode.`)
+    }
+    nextButton?.onclick() // if a button should be pushed to continue
+    if (newMode != 'child') {
+      bigCardsModal = e.div.class('modal')(ui.table)
+      document.body.append(bigCardsModal)
+      ui.mainContainer.classList.toggle('blur')
+      // close it by long pressing the modal background:
+      new PressHandler(bigCardsModal).onRelease = ({longPress, target}) => {
+        if (target != bigCardsModal) return
+        if (ui.modeSelect.value == 'blind' && !longPress) return
+        ui.modeSelect.value = 'normal' // does not trigger onchange
+        bigCardsModal.remove()
+        bigCardsModal = null
+        ui.game.prepend(ui.table) // send it back
+        ui.mainContainer.classList.toggle('blur')
+      }
+    }
+  }
+  previousMode = newMode
+}
+
+let card_onSelected, card_onBigTouch
+const cards = document.querySelectorAll('.card')
+// enable(ui.table)
+for (const card of cards) {
+  card.addEventListener('click', ({currentTarget: card}) => {
+    if (ui.modeSelect.value == 'blind') return
+    card_onSelected?.(card)
+  })
+  new PressHandler(card).onRelease = ({element: card, longPress}) => {
+    if (ui.modeSelect.value != 'blind') return
+    if (longPress) {
+      card_onSelected?.(card)
+    } else {
+      card_onBigTouch?.(card)
+    }
+  }
+}
 const prng = new PRNG()
 const peerRpc = new RPCBridge()
 peerConnection.setRpcBridge(peerRpc)
 let wakeLock
 let lastSide, alternating
+let nextButton
+let voices
+getVoices().then(result => voices = result)
 
 ui.sideFieldset.onchange = () => {
   // (radio button events bubbles up to it)
@@ -181,6 +232,7 @@ peerRpc.on('sidesSelected', async ({side, alternate}) => {
 })
 
 function signalNextRound() {
+  nextButton = null
   peerRpc.emit('nextRound')
   peerRpc.localEmit('nextRound')
 }
@@ -195,69 +247,79 @@ peerRpc.on('nextRound', () => {
   lastSide = side
   // create a container for game specific elements
   const container = e.div.class('vertical')
-  // add it after the table showing the cards
-  ui.table.after(container.element)
+  // ui.table.after(container.element) // add it after the table showing the cards
+  ui.game.append(container.element) // add it after the table showing the cards
   peerRpc.once('nextRound', cleanup, {first: true})
   peerRpc.once('close', cleanup)
   function cleanup() {
     container.remove()
-    hide(ui.c_childMode)
+    hide(ui.modeSelect)
     parallel(cards).classList.remove('correct', 'selected', 'showdown')
     peerRpc.off('close', cleanup)
     peerRpc.off('nextRound', cleanup)
   }
   if (side == 'guesser') {
-    show(ui.c_childMode)
+    show(ui.modeSelect)
     hide(ui.table) // hide the cards
-    if (ui.checkbox_childMode.checked) {
+    if (ui.modeSelect.value != 'normal') {
       viewCards()
+      speak('guess the card shown on the other screen')
     } else {
       container(
         e.p(`A random card is shown to your peer, to score see if you can guess which!`, e.br, `(remote view it or use telepathic abilities)`),
-        e.button.add('Make your guess').onclick(viewCards)
+        nextButton = e.button.add('Make your guess').onclick(viewCards)
       )
     }
     function viewCards() {
+      nextButton = null
       const text = e.p('Guess the card shown on the other screen.')
       container.replaceChildren(text)
       show(ui.table); enable(ui.table)
       let firstGuess = true
-      parallel(cards).onclick = ({currentTarget: currentCard}) => {
+      card_onBigTouch = (card) => {
+        speak(card.dataset.variant)
+      }
+      card_onSelected = (currentCard) => {
         parallel(cards).classList.remove('selected')
         currentCard.classList.add('selected')
         if (firstGuess) {firstGuess = false
           text.remove()
-          if (ui.checkbox_childMode.checked) {
+          if (ui.modeSelect.value != 'normal') {
             submitGuess()
+            speak('guessing '+currentCard.dataset.variant)
           } else {
-            container.add(e.button.add('Submit your guess!').onclick(submitGuess))
+            container.add(nextButton = e.button.add('Submit your guess!').onclick(submitGuess))
           }
         }
       }
     }
     async function submitGuess({currentTarget: button} = {}) {
+      nextButton = null
       button?.remove()
-      parallel(cards).onclick = undefined
+      card_onSelected = undefined
+      card_onBigTouch = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
       const correctIndex = await peerRpc.call('guess', selectedIndex)
       cards[correctIndex].classList.add('correct')
       parallel(cards).classList.add('showdown')
       if (selectedIndex == correctIndex) {
-        container.add(e.p(`Correct!`))
         scoreDB.saveResult({correct: true, peerGuess: false})
+        container.add(e.p(`Correct!`))
+        speak(cards[correctIndex].dataset.variant+' is the correct guess')
       } else {
-        container.add(e.p(`Wrong.`))
         scoreDB.saveResult({correct: false, peerGuess: false})
+        container.add(e.p(`Wrong.`))
+        speak(cards[correctIndex].dataset.variant+' is the wrong guess')
       }
       statViewer?.update()
       setTimeout(() => {
         // now the peer has been given enough time to see the result and we can start the next round
-        if (ui.checkbox_childMode.checked) {
+        if (ui.modeSelect.value != 'normal') {
           signalNextRound()
         } else {
-          container.add(e.button.add('Start next round').onclick(signalNextRound))
+          container.add(nextButton = e.button.add('Start next round').onclick(signalNextRound))
         }
-      }, ui.checkbox_childMode.checked ? 3000 : 1000)
+      }, ui.modeSelect.value != 'normal' ? 3000 : 1000)
     }
   } else if (side == 'viewer') {
     enable(ui.table) // make cards bright
@@ -286,3 +348,19 @@ peerRpc.on('nextRound', () => {
     })
   } else throw Error('lol')
 })
+
+function speak(text) {
+  if (ui.modeSelect.value != 'blind') return
+  speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  speechSynthesis.speak(utterance)
+}
+
+async function getVoices(timeout = 4000) {
+  const start = Date.now()
+  while (!speechSynthesis.getVoices().length) {
+    if (Date.now() > start + timeout) return []
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  return speechSynthesis.getVoices()
+}
