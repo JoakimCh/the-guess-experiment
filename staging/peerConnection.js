@@ -105,7 +105,7 @@ async function initPeerConnection(myId, peerId, suffix) {
   try {
     signalingClient = await ensureClientReady({myId, signalingClient})
   } catch (error) {
-    ui.button_abort.click()
+    resetConnection()
     return alert(error)
   }
   const signalingChannel = signalingClient.getChannel(peerId)
