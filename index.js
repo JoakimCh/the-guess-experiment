@@ -306,11 +306,11 @@ peerRpc.on('nextRound', () => {
       if (selectedIndex == correctIndex) {
         scoreDB.saveResult({correct: true, peerGuess: false})
         container.add(e.p(`Correct!`))
-        speak(cards[correctIndex].dataset.variant+' is the correct guess')
+        speak(cards[selectedIndex].dataset.variant+' is the correct guess')
       } else {
         scoreDB.saveResult({correct: false, peerGuess: false})
         container.add(e.p(`Wrong.`))
-        speak(cards[correctIndex].dataset.variant+' is the wrong guess')
+        speak(cards[selectedIndex].dataset.variant+' is the wrong guess')
       }
       statViewer?.update()
       setTimeout(() => {
