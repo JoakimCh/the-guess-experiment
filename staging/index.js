@@ -102,7 +102,7 @@ if (ui.checkbox_showStats.checked) {
 }
 
 let bigCardsModal, previousMode
-ui.modeSelect.onchange = (event) => {
+ui.modeSelect.onchange = () => {
   const newMode = ui.modeSelect.value
   if (newMode == 'normal') { // switched back to normal
     // log('normal mode')
@@ -110,6 +110,10 @@ ui.modeSelect.onchange = (event) => {
     if (newMode != 'child' && !navigator.maxTouchPoints) {
       ui.modeSelect.value = 'normal'
       return alert(`Your devise does not support touch which is a requirement for this mode.`)
+    }
+    if (newMode == 'blind' && !voices.length) {
+      ui.modeSelect.value = 'normal'
+      return alert(`Your browser does not support a speech synthesizer which is a requirement for this mode.`)
     }
     nextButton?.onclick() // if a button should be pushed to continue
     if (newMode != 'child') {
@@ -135,11 +139,11 @@ const cards = document.querySelectorAll('.card')
 // enable(ui.table)
 for (const card of cards) {
   card.addEventListener('click', ({currentTarget: card}) => {
-    if (bigCardsModal) return
+    if (ui.modeSelect.value == 'blind') return
     card_onSelected?.(card)
   })
   new PressHandler(card).onRelease = ({element: card, longPress}) => {
-    if (!bigCardsModal) return
+    if (ui.modeSelect.value != 'blind') return
     if (longPress) {
       card_onSelected?.(card)
     } else {
@@ -153,6 +157,8 @@ peerConnection.setRpcBridge(peerRpc)
 let wakeLock
 let lastSide, alternating
 let nextButton
+let voices
+getVoices().then(result => voices = result)
 
 ui.sideFieldset.onchange = () => {
   // (radio button events bubbles up to it)
@@ -347,4 +353,13 @@ function speak(text) {
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   speechSynthesis.speak(utterance)
+}
+
+async function getVoices(timeout = 4000) {
+  const start = Date.now()
+  while (!speechSynthesis.getVoices().length) {
+    if (Date.now() > start + timeout) return []
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  return speechSynthesis.getVoices()
 }
