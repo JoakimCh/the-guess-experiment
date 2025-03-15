@@ -298,11 +298,11 @@ peerRpc.on('nextRound', () => {
       if (selectedIndex == correctIndex) {
         scoreDB.saveResult({correct: true, peerGuess: false})
         container.add(e.p(`Correct!`))
-        speak('correct guess')
+        speak(cards[correctIndex].dataset.variant+' is the correct guess')
       } else {
         scoreDB.saveResult({correct: false, peerGuess: false})
         container.add(e.p(`Wrong.`))
-        speak('wrong guess')
+        speak(cards[correctIndex].dataset.variant+' is the wrong guess')
       }
       statViewer?.update()
       setTimeout(() => {
@@ -344,7 +344,6 @@ peerRpc.on('nextRound', () => {
 
 function speak(text) {
   if (ui.modeSelect.value != 'blind') return
-  log(text)
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   speechSynthesis.speak(utterance)
