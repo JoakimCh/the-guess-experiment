@@ -14,19 +14,23 @@ export class PressHandler {
 
   active(active) {
     const addOrRemove = active ? 'addEventListener' : 'removeEventListener'
-    this.#element[addOrRemove]('touchstart', this.#startPress)
-    this.#element[addOrRemove]('touchmove', this.#checkTouchPosition)
+    this.#element[addOrRemove]('contextmenu', this.#contextmenu)
+    this.#element[addOrRemove]('touchstart', this.#startPress, {passive: true})
+    this.#element[addOrRemove]('touchmove', this.#checkTouchPosition, {passive: true})
     this.#element[addOrRemove]('touchend', this.#endPress)
     this.#element[addOrRemove]('touchcancel', this.#endPress)
     this.#startTime = null
   }
 
+  #contextmenu = (e) => {
+    e.preventDefault() // prevent it on long press
+  }
+
   #startPress = (e) => {
-    e.preventDefault()
     this.#startTime = performance.now()
-    this.onPress?.(this.#element)
+    this.onPress?.({element: this.#element, target: e.target})
     if (this.longPressDuration) {
-      this.#timer = setTimeout(this.#endPress, this.longPressDuration)
+      this.#timer = setTimeout(this.#endPress, this.longPressDuration, e)
     }
   }
 
@@ -36,8 +40,9 @@ export class PressHandler {
     const endTime = performance.now()
     const pressDuration = endTime - this.#startTime
     this.#startTime = null
-    this.onRelease(this.#element, {
-      pressDuration, longPress: pressDuration >= this.longPressDuration
+    this.onRelease({
+      element: this.#element, target: e.target, pressDuration, 
+      longPress: pressDuration >= this.longPressDuration
     })
   }
 
@@ -46,7 +51,7 @@ export class PressHandler {
     const touch = e.touches[0]
     const touchedElement = document.elementFromPoint(touch.clientX, touch.clientY)
     if (touchedElement && !this.#element.contains(touchedElement)) {
-      this.#endPress()
+      this.#endPress(e)
     }
   }
 }
