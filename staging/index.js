@@ -4,6 +4,7 @@ import {RPCBridge} from 'rpc-bridge'
 import * as peerConnection from './peerConnection.js'
 import {e, parallel, log, pageSetup, show, hide, disable, enable} from 'wrapped-elements'
 import * as scoreDB from './scoreDatabase.js'
+import {PressHandler} from './pressHandler.js'
 // RPCBridge.debug = console.debug
 
 navigator.serviceWorker.register('service-worker.js')
@@ -52,17 +53,13 @@ document.body.append(
             e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant),
             e.span(variant)
           )
+          card.dataset.variant = variant
           cards.push(card)
         }
         return cards
       })())
     ),
-    ui.stats = e.article.id('ui_stats').hidden(true)(
-      // for current guesser (you or peer)
-      // total this session or total all sessions
-      // maybe a checkbox to toggle
-      // if not a game show your stats
-    ),
+    ui.stats = e.article.id('ui_stats').hidden(true)(),
     e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/the-guess-experiment'), '.')
   )
 )
@@ -71,6 +68,9 @@ peerConnection.ui.buttonContainer.append(
     ui.checkbox_childMode = e.input.type('checkbox').name('childMode')
     .checked(localStorage.getItem('cb_childMode') == 'true')
     .on('change', ({target:cb}) => localStorage.setItem('cb_childMode', cb.checked))()
+  ),
+  ui.c_blindMode = e.label.hidden(true)('Blind mode:', 
+    ui.checkbox_blindMode = e.input.type('checkbox').name('blindMode')
   ),
   e.label('Show stats:', 
     ui.checkbox_showStats = e.input.type('checkbox').name('showStats')
@@ -103,7 +103,45 @@ if (ui.checkbox_showStats.checked) {
   ui.checkbox_showStats.onchange({target: {checked: true}})
 }
 
-const cards = document.querySelectorAll('.card') // getElementsByClassName('card')
+let blindModeModal
+ui.checkbox_blindMode.onchange = ({target: {checked}}) => {
+  let closeButton
+  if (checked) {
+    blindModeModal = e.div.class('modal')(
+      ui.table,
+      closeButton = e.button('close blind mode')
+      // or the background itself is a close button? or not, we can just open our eyes to find it
+      // blind mode also turns on child mode and adds a voiceover thingy
+    )
+    document.body.append(blindModeModal)
+    closeButton.onclick = () => {
+      ui.checkbox_blindMode.checked = false
+      ui.checkbox_blindMode.onchange({target: {checked: false}})
+    }
+  } else {
+    blindModeModal.remove()
+    ui.game.prepend(ui.table)
+  }
+  ui.mainContainer.classList.toggle('blur')
+}
+
+let card_onSelected, card_onBlindTouch
+const cards = document.querySelectorAll('.card')
+enable(ui.table)
+for (const card of cards) {
+  card.addEventListener('click', ({currentTarget: card}) => {
+    if (ui.checkbox_blindMode.checked) return
+    card_onSelected?.(card)
+  })
+  new PressHandler(card).onRelease = (card, {longPress}) => {
+    if (!ui.checkbox_blindMode.checked) return
+    if (longPress) {
+      card_onSelected?.(card)
+    } else {
+      card_onBlindTouch?.(card)
+    }
+  }
+}
 const prng = new PRNG()
 const peerRpc = new RPCBridge()
 peerConnection.setRpcBridge(peerRpc)
@@ -201,16 +239,17 @@ peerRpc.on('nextRound', () => {
   peerRpc.once('close', cleanup)
   function cleanup() {
     container.remove()
-    hide(ui.c_childMode)
+    hide(ui.c_childMode, ui.c_blindMode)
     parallel(cards).classList.remove('correct', 'selected', 'showdown')
     peerRpc.off('close', cleanup)
     peerRpc.off('nextRound', cleanup)
   }
   if (side == 'guesser') {
-    show(ui.c_childMode)
+    show(ui.c_childMode, ui.c_blindMode)
     hide(ui.table) // hide the cards
-    if (ui.checkbox_childMode.checked) {
+    if (ui.checkbox_childMode.checked || ui.checkbox_blindMode.checked) {
       viewCards()
+      speak('guess the card shown on the other screen')
     } else {
       container(
         e.p(`A random card is shown to your peer, to score see if you can guess which!`, e.br, `(remote view it or use telepathic abilities)`),
@@ -222,13 +261,18 @@ peerRpc.on('nextRound', () => {
       container.replaceChildren(text)
       show(ui.table); enable(ui.table)
       let firstGuess = true
-      parallel(cards).onclick = ({currentTarget: currentCard}) => {
+      card_onBlindTouch = (card) => {
+        const utterance = new SpeechSynthesisUtterance(card.dataset.variant)
+        speechSynthesis.speak(utterance)
+      }
+      card_onSelected = (currentCard) => {
         parallel(cards).classList.remove('selected')
         currentCard.classList.add('selected')
         if (firstGuess) {firstGuess = false
           text.remove()
-          if (ui.checkbox_childMode.checked) {
+          if (ui.checkbox_childMode.checked || ui.checkbox_blindMode.checked) {
             submitGuess()
+            speak('guessing '+currentCard.dataset.variant)
           } else {
             container.add(e.button.add('Submit your guess!').onclick(submitGuess))
           }
@@ -237,27 +281,31 @@ peerRpc.on('nextRound', () => {
     }
     async function submitGuess({currentTarget: button} = {}) {
       button?.remove()
-      parallel(cards).onclick = undefined
+      card_onSelected = undefined
+      card_onBlindTouch = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
       const correctIndex = await peerRpc.call('guess', selectedIndex)
       cards[correctIndex].classList.add('correct')
       parallel(cards).classList.add('showdown')
       if (selectedIndex == correctIndex) {
-        container.add(e.p(`Correct!`))
         scoreDB.saveResult({correct: true, peerGuess: false})
+        container.add(e.p(`Correct!`))
+        speak('you guessed correctly')
       } else {
-        container.add(e.p(`Wrong.`))
         scoreDB.saveResult({correct: false, peerGuess: false})
+        container.add(e.p(`Wrong.`))
+        speak('you guessed wrong')
       }
       statViewer?.update()
       setTimeout(() => {
         // now the peer has been given enough time to see the result and we can start the next round
-        if (ui.checkbox_childMode.checked) {
+        if (ui.checkbox_childMode.checked || ui.checkbox_blindMode.checked) {
+          speak('starting next round')
           signalNextRound()
         } else {
           container.add(e.button.add('Start next round').onclick(signalNextRound))
         }
-      }, ui.checkbox_childMode.checked ? 3000 : 1000)
+      }, ui.checkbox_childMode.checked || ui.checkbox_blindMode.checked ? 3000 : 1000)
     }
   } else if (side == 'viewer') {
     enable(ui.table) // make cards bright
@@ -286,3 +334,10 @@ peerRpc.on('nextRound', () => {
     })
   } else throw Error('lol')
 })
+
+function speak(text) {
+  if (!ui.checkbox_blindMode.checked) return
+  speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  speechSynthesis.speak(utterance)
+}

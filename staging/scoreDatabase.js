@@ -35,6 +35,7 @@ function setup(db) {
 }
 
 export function newSession({peer, numCards = 5}) {
+  peer = peer.toLowerCase()
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('kv', 'readwrite')
     transaction.onerror = () => reject(transaction.error)
@@ -111,6 +112,7 @@ export function saveResult({correct, peerGuess}) {
 }
 
 export function getSessionsWith(peer) {
+  peer = peer.toLowerCase()
   const transaction = db.transaction('sessions', 'readonly')
   const index = transaction.objectStore('sessions').index('peer')
   return new Promise((resolve, reject) => {
