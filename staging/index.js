@@ -182,14 +182,14 @@ ui.checkbox_ready.onchange = ({currentTarget: {checked}}) => {
   checkReady()
 }
 
-function checkReady() {
+async function checkReady() {
   const ready = ui.checkbox_ready.checked && ui.checkbox_peerReady.checked
   if (!ready || !peerConnection.isDominant) {
     return // not ready or not the deciding side
   }
   let mySide = ui.selectSide.elements['side'].value
   const alternate = (mySide == 'alternate')
-  if (alternate) mySide = ['viewer','guesser'][prng.integer(1)]
+  if (alternate) mySide = ['viewer','guesser'][await prng.integer(1)]
   const peerSide = (mySide == 'viewer' ? 'guesser' : 'viewer')
   peerRpc.emit('sidesSelected', {side: peerSide, alternate})
   peerRpc.localEmit('sidesSelected', {side: mySide, alternate})
@@ -249,7 +249,7 @@ function signalNextRound() {
   peerRpc.localEmit('nextRound')
 }
 
-peerRpc.on('nextRound', () => {
+peerRpc.on('nextRound', async () => {
   let side = lastSide
   if (alternating) {
     side = (lastSide == 'viewer' ? 'guesser' : 'viewer')
@@ -342,7 +342,7 @@ peerRpc.on('nextRound', () => {
       `(either through remote viewing or telepathic ability)`, e.br, 
         `You can help by transmitting it telepathically!`),
     )
-    const correctIndex = prng.integer(4)
+    const correctIndex = await prng.integer(4)
     cards[correctIndex].classList.add('correct')
     parallel(cards).classList.add('showdown') // hide others
     peerRpc.bind('guess', indexGuessed => {
