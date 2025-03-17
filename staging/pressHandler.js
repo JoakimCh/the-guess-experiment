@@ -22,36 +22,36 @@ export class PressHandler {
     this.#startTime = null
   }
 
-  #contextmenu = (e) => {
-    e.preventDefault() // prevent it on long press
+  #contextmenu = (event) => {
+    event.preventDefault() // prevent it on long press
   }
 
-  #startPress = (e) => {
+  #startPress = (event) => {
     this.#startTime = performance.now()
-    this.onPress?.({element: this.#element, target: e.target})
+    this.onPress?.({element: this.#element, target: event.target, event})
     if (this.longPressDuration) {
-      this.#timer = setTimeout(this.#endPress, this.longPressDuration, e)
+      this.#timer = setTimeout(this.#endPress, this.longPressDuration, event)
     }
   }
 
-  #endPress = (e) => {
+  #endPress = (event) => {
     if (this.#startTime === null) return
     clearTimeout(this.#timer)
     const endTime = performance.now()
     const pressDuration = endTime - this.#startTime
     this.#startTime = null
     this.onRelease({
-      element: this.#element, target: e.target, pressDuration, 
-      longPress: pressDuration >= this.longPressDuration
+      element: this.#element, target: event.target, pressDuration, 
+      longPress: pressDuration >= this.longPressDuration, event
     })
   }
 
-  #checkTouchPosition = (e) => {
+  #checkTouchPosition = (event) => {
     if (this.#startTime === null) return
-    const touch = e.touches[0]
+    const touch = event.touches[0]
     const touchedElement = document.elementFromPoint(touch.clientX, touch.clientY)
     if (touchedElement && !this.#element.contains(touchedElement)) {
-      this.#endPress(e)
+      this.#endPress(event)
     }
   }
 }

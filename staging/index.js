@@ -46,29 +46,32 @@ document.body.append(
         )
       )
     ),
-    ui.game = e.article.id('ui_game')(
-      ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
-        for (const variant of ['star','box','waves','cross','circle']) {
-          const card = e.div.class('card')(
-            e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant),
-            e.span(variant)
-          )
-          card.dataset.variant = variant
-          cards.push(card)
-        }
-        return cards
-      })())
+    ui.gameSection = e.section(
+      ui.game = e.div.id('ui_game')(
+        ui.table = e.div.id('ui_table').set('disabled')(...((cards = []) => {
+          for (const variant of ['star','box','waves','cross','circle']) {
+            const card = e.div.class('card')(
+              e.img.draggable(false).src(`/imgs/zener/${variant}.svg`).alt(variant),
+              e.span(variant)
+            )
+            card.dataset.variant = variant
+            cards.push(card)
+          }
+          return cards
+        })())
+      )
     ),
-    ui.stats = e.article.id('ui_stats').hidden(true)(),
+    ui.stats = e.section.hidden(true)(),
     e.p('Made by Joakim L. Christiansen.', e.br, 'See the open source ', e.a.add('code at GitHub').href('https://github.com/JoakimCh/the-guess-experiment'), '.')
   )
 )
 peerConnection.ui.buttonContainer.append(
   ui.modeSelect = e.select.name('mode').hidden(true)(
     e.option.value('normal')('normal mode'),
-    e.option.value('child')('child mode'),
+    e.option.value('quick')('quick mode'),
+    e.option.value('big')('big mode'),
+    e.option.value('bigVoiced')('big with voice'),
     e.option.value('blind')('blind mode'),
-    e.option.value('mixed')('mixed mode'),
   ),
   e.label('Show stats:', 
     ui.checkbox_showStats = e.input.type('checkbox').name('showStats')
@@ -77,6 +80,8 @@ peerConnection.ui.buttonContainer.append(
   ),
   ui.button_statExplorer = e.button('Stat explorer')
 )
+// log(ui.modeSelect.namedItem('quick'))
+// log(ui.modeSelect.value) // value or text if none
 ui.button_statExplorer.onclick = async () => {
   const statExplorer = await import('./statExplorer.js')
   document.body.replaceChildren(statExplorer.uiContainer)
@@ -101,41 +106,45 @@ if (ui.checkbox_showStats.checked) {
   ui.checkbox_showStats.onchange({target: {checked: true}})
 }
 
-let bigCardsModal, previousMode
+let bigCardsModal
 ui.modeSelect.onchange = () => {
   const newMode = ui.modeSelect.value
   if (newMode == 'normal') { // switched back to normal
     // log('normal mode')
   } else {
-    if (newMode != 'child' && !navigator.maxTouchPoints) {
+    if (newMode != 'quick' && !navigator.maxTouchPoints) {
       ui.modeSelect.value = 'normal'
       return alert(`Your devise does not support touch which is a requirement for this mode.`)
     }
-    if (newMode == 'blind' && !voices.length) {
+    if (['blind','bigVoiced'].includes(newMode) && !voices.length) {
       ui.modeSelect.value = 'normal'
       return alert(`Your browser does not support a speech synthesizer which is a requirement for this mode.`)
     }
     nextButton?.onclick() // if a button should be pushed to continue
-    if (newMode != 'child') {
-      bigCardsModal = e.div.class('modal')(ui.table)
+    if (newMode != 'quick') {
+      bigCardsModal = e.div.class('modal')(ui.game)
+      if (newMode == 'blind') {
+        bigCardsModal.classList.add('blindMode')
+        bigCardsModal.append(e.p('(long press the background to exit blind mode)'))
+      }
       document.body.append(bigCardsModal)
       ui.mainContainer.classList.toggle('blur')
       // close it by long pressing the modal background:
-      new PressHandler(bigCardsModal).onRelease = ({longPress, target}) => {
+      new PressHandler(bigCardsModal).onRelease = ({longPress, target, event}) => {
         if (target != bigCardsModal) return
         if (ui.modeSelect.value == 'blind' && !longPress) return
+        event.preventDefault() // prevent a click event following it, since this will then click behind the modal which we remove
         ui.modeSelect.value = 'normal' // does not trigger onchange
         bigCardsModal.remove()
         bigCardsModal = null
-        ui.game.prepend(ui.table) // send it back
+        ui.gameSection.prepend(ui.game) // send it back
         ui.mainContainer.classList.toggle('blur')
       }
     }
   }
-  previousMode = newMode
 }
 
-let card_onSelected, card_onBigTouch
+let card_onSelected, card_onBlindTouch
 const cards = document.querySelectorAll('.card')
 // enable(ui.table)
 for (const card of cards) {
@@ -148,7 +157,7 @@ for (const card of cards) {
     if (longPress) {
       card_onSelected?.(card)
     } else {
-      card_onBigTouch?.(card)
+      card_onBlindTouch?.(card)
     }
   }
 }
@@ -199,6 +208,8 @@ peerRpc.on('close', () => {
   hide(ui.selectSide)
   show(ui.description, ui.table)
   disable(ui.table)
+  ui.modeSelect.value = 'normal'
+  ui.modeSelect.onchange()
 })
 
 peerRpc.on('peerReady', ready => {
@@ -246,11 +257,11 @@ peerRpc.on('nextRound', () => {
   statViewer?.update()
   lastSide = side
   // create a container for game specific elements
-  const container = e.div.class('vertical')
-  // ui.table.after(container.element) // add it after the table showing the cards
+  const container = e.div.class('vertical gameContainer')
   ui.game.append(container.element) // add it after the table showing the cards
   peerRpc.once('nextRound', cleanup, {first: true})
   peerRpc.once('close', cleanup)
+  show(ui.modeSelect)
   function cleanup() {
     container.remove()
     hide(ui.modeSelect)
@@ -259,16 +270,17 @@ peerRpc.on('nextRound', () => {
     peerRpc.off('nextRound', cleanup)
   }
   if (side == 'guesser') {
-    show(ui.modeSelect)
     hide(ui.table) // hide the cards
-    if (ui.modeSelect.value != 'normal') {
-      viewCards()
-      speak('guess the card shown on the other screen')
-    } else {
-      container(
+    speak('guess the card shown on the other screen')
+    if (ui.modeSelect.value != 'blind') {
+      container.add(
         e.p(`A random card is shown to your peer, to score see if you can guess which!`, e.br, `(remote view it or use telepathic abilities)`),
-        nextButton = e.button.add('Make your guess').onclick(viewCards)
       )
+    }
+    if (ui.modeSelect.value == 'normal') {
+      container.add(nextButton = e.button.add('Make your guess').onclick(viewCards))
+    } else {
+      viewCards()
     }
     function viewCards() {
       nextButton?.remove()
@@ -277,7 +289,7 @@ peerRpc.on('nextRound', () => {
       container.replaceChildren(text)
       show(ui.table); enable(ui.table)
       let firstGuess = true
-      card_onBigTouch = (card) => {
+      card_onBlindTouch = (card) => {
         speak(card.dataset.variant)
       }
       card_onSelected = (currentCard) => {
@@ -285,11 +297,11 @@ peerRpc.on('nextRound', () => {
         currentCard.classList.add('selected')
         if (firstGuess) {firstGuess = false
           text.remove()
-          if (ui.modeSelect.value != 'normal') {
+          if (ui.modeSelect.value == 'normal') {
+            container.add(nextButton = e.button.add('Submit your guess!').onclick(submitGuess))
+          } else {
             submitGuess()
             speak('guessing '+currentCard.dataset.variant)
-          } else {
-            container.add(nextButton = e.button.add('Submit your guess!').onclick(submitGuess))
           }
         }
       }
@@ -298,7 +310,7 @@ peerRpc.on('nextRound', () => {
       nextButton?.remove()
       nextButton = null
       card_onSelected = undefined
-      card_onBigTouch = undefined
+      card_onBlindTouch = undefined
       const selectedIndex = parallel(cards).classList.contains('selected').indexOf(true)
       const correctIndex = await peerRpc.call('guess', selectedIndex)
       cards[correctIndex].classList.add('correct')
@@ -315,16 +327,16 @@ peerRpc.on('nextRound', () => {
       statViewer?.update()
       setTimeout(() => {
         // now the peer has been given enough time to see the result and we can start the next round
-        if (ui.modeSelect.value != 'normal') {
-          signalNextRound()
-        } else {
+        if (ui.modeSelect.value == 'normal') {
           container.add(nextButton = e.button.add('Start next round').onclick(signalNextRound))
+        } else {
+          signalNextRound()
         }
-      }, ui.modeSelect.value != 'normal' ? 3000 : 1000)
+      }, ui.modeSelect.value == 'normal' ? 1000 : 3000)
     }
   } else if (side == 'viewer') {
     enable(ui.table) // make cards bright
-    container(
+    container.add(
       e.p(`This is the card your peer must guess to score.`, e.br, 
       `(either through remote viewing or telepathic ability)`, e.br, 
         `You can help by transmitting it telepathically!`),
@@ -351,7 +363,8 @@ peerRpc.on('nextRound', () => {
 })
 
 function speak(text) {
-  if (ui.modeSelect.value != 'blind') return
+  if (!voices.length) return
+  if (['blind','bigVoiced'].includes(ui.modeSelect.value)) return
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   speechSynthesis.speak(utterance)
