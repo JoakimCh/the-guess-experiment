@@ -364,7 +364,7 @@ peerRpc.on('nextRound', () => {
 
 function speak(text) {
   if (!voices.length) return
-  if (['blind','bigVoiced'].includes(ui.modeSelect.value)) return
+  if (!['blind','bigVoiced'].includes(ui.modeSelect.value)) return
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   speechSynthesis.speak(utterance)
