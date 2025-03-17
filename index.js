@@ -122,18 +122,19 @@ ui.modeSelect.onchange = () => {
     }
     nextButton?.onclick() // if a button should be pushed to continue
     if (newMode != 'quick') {
-      bigCardsModal = e.div.class('modal')(ui.game)
+      bigCardsModal = e.div.class('modal')(
+        e.p('(long press the background to exit this mode)'),
+        ui.game
+      )
       if (newMode == 'blind') {
         bigCardsModal.classList.add('blindMode')
-        bigCardsModal.append(e.p('(long press the background to exit blind mode)'))
       }
       document.body.append(bigCardsModal)
       ui.mainContainer.classList.toggle('blur')
       // close it by long pressing the modal background:
       new PressHandler(bigCardsModal).onRelease = ({longPress, target, event}) => {
-        if (target != bigCardsModal) return
-        if (ui.modeSelect.value == 'blind' && !longPress) return
-        event.preventDefault() // prevent a click event following it, since this will then click behind the modal which we remove
+        if (!longPress || target != bigCardsModal) return
+        event.preventDefault() // prevent a click event following it, since this will then click behind the modal we remove
         ui.modeSelect.value = 'normal' // does not trigger onchange
         bigCardsModal.remove()
         bigCardsModal = null
